@@ -65,7 +65,7 @@ nije moglo da se izracuna, pojavice se u `unavailable` - **nikad se ne izostavlj
 
 ## Testovi
 
-    python -m test.test_service
+    python -m tests.test_service
 
 Testovi idu **preko HTTP-a**, ne pozivaju funkcije direktno. Prva ozbiljna greska ovde
 bila je upravo takva: `pyswisseph` cuva putanju do efemerida **po niti**, pa je Hiron

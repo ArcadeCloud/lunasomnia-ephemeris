@@ -20,7 +20,7 @@ jobs:
       # je kod pyswisseph-a thread-local, pa direktan poziv ne bi uhvatio da radna
       # nit servera ne vidi fajlove i tiho izostavi Hirona iz karte.
       - name: Testovi servisa
-        run: python -m test.test_service
+        run: python -m tests.test_service
 
       - name: Provera da Dockerfile radi
         run: docker build -t lunasomnia-ephemeris .

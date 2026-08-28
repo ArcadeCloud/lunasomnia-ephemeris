@@ -7,7 +7,12 @@ greska u ovom servisu bila je upravo takva: pyswisseph cuva putanju do efemerida
 niti, pa je Hiron radio u direktnom pozivu a tiho izostajao iz karte koju vrati
 visenitni server. Direktan test to nikad ne bi uhvatio.
 
-Pokretanje: python -m test.test_service
+Pokretanje: python -m tests.test_service
+
+Direktorijum se zove `tests`, a ne `test`, jer je `test` ime paketa iz standardne
+biblioteke Pythona. Sa imenom `test` stdlib zaseni lokalni direktorijum i uvoz pukne
+na svakoj urednoj instalaciji - lokalno je prolazilo samo zato sto Termux taj paket
+ne isporucuje.
 """
 from __future__ import annotations
 
