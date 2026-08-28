@@ -2,7 +2,9 @@
 # prevodjenje ostaje u prvoj slici i ne nosi se u isporuku.
 FROM python:3.13-slim AS build
 WORKDIR /w
-RUN apt-get update && apt-get install -y --no-install-recommends gcc \
+# build-essential, ne samo gcc: pyswisseph prevodi C i trazi zaglavlja standardne
+# biblioteke (math.h), koja u slim slici dolaze uz libc6-dev.
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
  && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
