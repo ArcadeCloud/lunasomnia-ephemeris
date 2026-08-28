@@ -1,0 +1,15 @@
+Ovaj projekat koristi Swiss Ephemeris.
+
+  Swiss Ephemeris
+  Copyright (C) 1997-2021 Astrodienst AG, Switzerland
+  https://www.astro.com/swisseph/
+
+Swiss Ephemeris se dobija pod dvostrukom licencom: GNU Affero General Public License
+verzija 3, ili placena profesionalna licenca od Astrodienst-a. Ovaj projekat se oslanja
+na AGPL granu i zato je i sam pod AGPL-3.0 (vidi LICENSE).
+
+Swiss Ephemeris NIJE menjan. Koristi se preko paketa `pyswisseph`, bez izmena izvornog
+koda. Efemeridni fajlovi u ephe/ su nepromenjeni fajlovi Astrodienst-a.
+
+Ko zeli da ovaj kod koristi u zatvorenom programu, mora od Astrodienst-a kupiti
+profesionalnu licencu za Swiss Ephemeris; AGPL to ne dozvoljava.

@@ -1,0 +1,3 @@
+# Jedina zavisnost. Sve ostalo je standardna biblioteka - servis ima tri adrese i
+# racunanje mu je jedini posao, pa svaki okvir donosi vise nacina da pukne nego koristi.
+pyswisseph==2.10.3.2
