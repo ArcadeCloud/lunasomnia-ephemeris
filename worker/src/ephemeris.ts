@@ -8,7 +8,7 @@
  * Zato se WASM UVOZI kao modul (Cloudflare ga prevede pri isporuci) i predaje direktno
  * konstruktoru `SwissEph`, a efemeridni fajlovi se ubacuju u memoriju preko `mount()`.
  */
-import { SwissEph } from "@fusionstrings/swisseph-wasi";
+import { SwissEph } from "../vendor/swisseph/bridge.js";
 import wasmModule from "../vendor/libswephe.wasm";
 import seas from "../vendor/seas_18.se1";
 import sepl from "../vendor/sepl_18.se1";

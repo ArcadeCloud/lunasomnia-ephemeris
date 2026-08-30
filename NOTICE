@@ -13,3 +13,21 @@ koda. Efemeridni fajlovi u ephe/ su nepromenjeni fajlovi Astrodienst-a.
 
 Ko zeli da ovaj kod koristi u zatvorenom programu, mora od Astrodienst-a kupiti
 profesionalnu licencu za Swiss Ephemeris; AGPL to ne dozvoljava.
+
+---
+
+worker/vendor/swisseph/ sadrzi kod prenet iz paketa:
+
+  @fusionstrings/swisseph-wasi 0.1.0
+  https://www.npmjs.com/package/@fusionstrings/swisseph-wasi
+  Licenca: AGPL-3.0
+
+Prenet je, a ne uvezen kao zavisnost, iz dva razloga: paket kroz svoj Deno-shim sloj
+vuce `undici`, `which` i `path`, kojih u Cloudflare Workers-u nema, i u verziji 0.1.0
+`load()` trazi WASM fajl na putanji na kojoj ga nema.
+
+Izmene su najmanje moguce i popisane su u zaglavlju svakog prenetog fajla: uklonjen
+Deno-shim sloj i funkcija load(). Sam Swiss Ephemeris (worker/vendor/libswephe.wasm)
+NIJE menjan.
+
+Posto je i ovaj repozitorijum pod AGPL-3.0, prenosenje je u skladu sa licencom.
