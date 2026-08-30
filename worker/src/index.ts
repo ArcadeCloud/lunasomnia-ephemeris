@@ -14,6 +14,26 @@ import { julianDay, zonedToUtc } from "./time.ts";
 
 const SOURCE_URL = "https://github.com/ArcadeCloud/lunasomnia-ephemeris";
 
+/**
+ * Poreklo kojima je dozvoljen poziv iz pregledaca.
+ *
+ * Spisak je zatvoren, ne "*": posetilac koji trazi prosirenu kartu salje datum, vreme i
+ * mesto rodjenja, pa nema razloga da bilo koja tudja stranica moze da otvori ovaj put.
+ */
+const ALLOWED_ORIGINS = new Set([
+  "https://lunasomnia.com",
+  "https://www.lunasomnia.com",
+  "http://localhost:4321",
+]);
+
+function corsHeaders(request: Request): HeadersInit {
+  const origin = request.headers.get("origin");
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
+  // Vary je obavezan: bez njega bi kes mogao da posluzi odgovor sa jednim
+  // Access-Control-Allow-Origin posetiocu sa drugog porekla.
+  return { "access-control-allow-origin": origin, vary: "Origin" };
+}
+
 class BadRequest extends Error {}
 
 const json = (data: unknown, status = 200, extra: HeadersInit = {}): Response =>
@@ -77,9 +97,25 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
+    const cors = corsHeaders(request);
+
+    if (request.method === "OPTIONS") {
+      // Bez dozvoljenog porekla se ne odgovara sa 204: pregledac tada uredno odbije
+      // zahtev, umesto da izgleda kao da je put otvoren pa da pukne kasnije.
+      if (!Object.keys(cors).length) return json({ error: "origin not allowed" }, 403);
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...cors,
+          "access-control-allow-methods": "POST, OPTIONS",
+          "access-control-allow-headers": "content-type",
+          "access-control-max-age": "86400",
+        },
+      });
+    }
 
     if (request.method === "GET" || request.method === "HEAD") {
-      if (path === "/health") return json({ ok: true });
+      if (path === "/health") return json({ ok: true }, 200, cors);
       if (path === "/" || path === "/source") {
         return json({
           service: "lunasomnia-ephemeris",
@@ -87,19 +123,19 @@ export default {
           license: "AGPL-3.0",
           source: SOURCE_URL,
           endpoints: { "POST /v1/chart": "natal chart", "GET /health": "liveness" },
-        });
+        }, 200, cors);
       }
-      return json({ error: "not found" }, 404);
+      return json({ error: "not found" }, 404, cors);
     }
 
-    if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
-    if (path !== "/v1/chart") return json({ error: "not found" }, 404);
+    if (request.method !== "POST") return json({ error: "method not allowed" }, 405, cors);
+    if (path !== "/v1/chart") return json({ error: "not found" }, 404, cors);
 
     let body: Body;
     try {
       body = await request.json();
     } catch {
-      return json({ error: "invalid JSON" }, 400);
+      return json({ error: "invalid JSON" }, 400, cors);
     }
 
     try {
@@ -111,12 +147,14 @@ export default {
         house_system: req.system,
         ...chart,
         engine: { ephemeris: "Swiss Ephemeris (WASM)", license: "AGPL-3.0", source: SOURCE_URL },
-      });
+      }, 200, cors);
     } catch (e) {
-      if (e instanceof BadRequest) return json({ error: e.message }, 400);
-      // Poruka izuzetka moze da sadrzi ulaz, a ulaz su podaci o rodjenju.
-      console.error("neocekivana greska", e);
-      return json({ error: "internal error" }, 500);
+      if (e instanceof BadRequest) return json({ error: e.message }, 400, cors);
+      // Belezi se SAMO vrsta i poruka greske. Ceo objekat izuzetka moze kroz `cause`
+      // da nosi ulaz, a ulaz su datum, vreme i mesto necijeg rodjenja - to ne sme u
+      // dnevnik ni u kom obliku.
+      console.error("neocekivana greska:", (e as Error)?.name, (e as Error)?.message);
+      return json({ error: "internal error" }, 500, cors);
     }
   },
 };

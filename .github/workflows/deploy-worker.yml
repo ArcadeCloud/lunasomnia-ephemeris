@@ -64,3 +64,23 @@ jobs:
             else
               "uzivo i tacno: \(.positions | keys | length) tela, ASC \(.angles.asc), Hiron \(.positions.chiron.degree)"
             end'
+
+          echo ""
+          echo "=== CORS ==="
+          # Zatvoren spisak porekla ne vredi nista ako se ne proveri da tudje ODBIJA.
+          nase=$(curl -sS -o /dev/null -w '%{http_code}' -X OPTIONS "$B/v1/chart" \
+            -H 'Origin: https://lunasomnia.com' \
+            -H 'Access-Control-Request-Method: POST')
+          tudje=$(curl -sS -o /dev/null -w '%{http_code}' -X OPTIONS "$B/v1/chart" \
+            -H 'Origin: https://zlonamerni.example' \
+            -H 'Access-Control-Request-Method: POST')
+          zaglavlje=$(curl -sS -D - -o /dev/null -X POST "$B/v1/chart" \
+            -H 'Origin: https://lunasomnia.com' -H 'content-type: application/json' \
+            -d '{"utc":"2002-08-14T12:50:00Z","lat":44.8667,"lon":20.65}' \
+            | grep -ci 'access-control-allow-origin: https://lunasomnia.com' || true)
+          echo "  nas OPTIONS:    $nase   (ocekivano 204)"
+          echo "  tudji OPTIONS:  $tudje   (ocekivano 403)"
+          echo "  zaglavlje na POST-u: $zaglavlje  (ocekivano 1)"
+          [ "$nase" = "204" ] || { echo "nas origin nije propusten"; exit 1; }
+          [ "$tudje" = "403" ] || { echo "TUDJI ORIGIN JE PROPUSTEN"; exit 1; }
+          [ "$zaglavlje" = "1" ] || { echo "nema allow-origin na odgovoru"; exit 1; }
