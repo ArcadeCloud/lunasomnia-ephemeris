@@ -1,0 +1,13 @@
+name = "lunasomnia-ephemeris"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# Efemeridni fajlovi se uvoze kao binarni podaci i zavrsavaju u samom paketu Worker-a.
+# Workers nemaju fajl sistem, pa se u WASM ubacuju kroz mount() pri prvom pozivu.
+[[rules]]
+type = "Data"
+globs = ["**/*.se1"]
+fallthrough = true
+
+[observability]
+enabled = true

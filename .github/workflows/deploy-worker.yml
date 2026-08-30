@@ -1,0 +1,66 @@
+name: Isporuka Worker-a
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/deploy-worker.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: worker-deploy
+  cancel-in-progress: false
+
+jobs:
+  isporuka:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm install
+
+      - name: Testovi vremena
+        run: npm test
+
+      - name: Isporuka
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+
+      # Presudno: WASM i ubacivanje efemeridnih fajlova mogu da otkazu SAMO u pravom
+      # runtime-u. Lokalni testovi to ne dopiru, a otkaz je tih - karta izgleda ispravno,
+      # samo bez Hirona. Zato se ziva isporuka poredi sa etalonom iz /root/astro.
+      - name: Provera zive isporuke
+        run: |
+          set -euo pipefail
+          B=https://lunasomnia-ephemeris.simkora.workers.dev
+          for i in $(seq 1 20); do
+            curl -fsS "$B/health" >/dev/null 2>&1 && break
+            sleep 3
+          done
+          odg=$(curl -fsS -X POST "$B/v1/chart" -H 'content-type: application/json' \
+            -d '{"local":"2002-08-14T14:50","tz":"Europe/Belgrade","lat":44.8667,"lon":20.65}')
+          printf '%s' "$odg" | jq -e '
+            def blizu(a; b; sek): ((a - b + 540) % 360 - 180) | fabs | . * 3600 <= sek;
+            if (.unavailable // {}) != {} then
+              error("neka tela nisu izracunata: \(.unavailable)")
+            elif (.positions | keys | length) < 14 then
+              error("ocekivano 14 tela, dobijeno \(.positions | keys | length)")
+            elif (.positions.chiron | not) then
+              error("HIRON NEDOSTAJE - efemeridni fajl nije ubacen u WASM")
+            elif blizu(.angles.asc; 245.184624; 1) | not then
+              error("ASC promasen: \(.angles.asc)")
+            elif blizu(.angles.mc; 175.554199; 1) | not then
+              error("MC promasen: \(.angles.mc)")
+            elif blizu(.positions.chiron.longitude; 273.617330; 1) | not then
+              error("Hiron promasen: \(.positions.chiron.longitude)")
+            elif blizu(.positions.sun.longitude; 141.565233; 1) | not then
+              error("Sunce promaseno: \(.positions.sun.longitude)")
+            else
+              "uzivo i tacno: \(.positions | keys | length) tela, ASC \(.angles.asc), Hiron \(.positions.chiron.degree)"
+            end'
