@@ -44,7 +44,7 @@ jobs:
             sleep 3
           done
           odg=$(curl -fsS -X POST "$B/v1/chart" -H 'content-type: application/json' \
-            -d '{"local":"2002-08-14T14:50","tz":"Europe/Belgrade","lat":44.8667,"lon":20.65}')
+            -d '{"local":"2000-01-01T12:00","tz":"Europe/London","lat":51.4779,"lon":0.0}')
           printf '%s' "$odg" | jq -e '
             def blizu(a; b; sek): ((a - b + 540) % 360 - 180) | fabs | . * 3600 <= sek;
             if (.unavailable // {}) != {} then
@@ -53,13 +53,13 @@ jobs:
               error("ocekivano 14 tela, dobijeno \(.positions | keys | length)")
             elif (.positions.chiron | not) then
               error("HIRON NEDOSTAJE - efemeridni fajl nije ubacen u WASM")
-            elif blizu(.angles.asc; 245.184624; 1) | not then
+            elif blizu(.angles.asc; 24.266189; 1) | not then
               error("ASC promasen: \(.angles.asc)")
-            elif blizu(.angles.mc; 175.554199; 1) | not then
+            elif blizu(.angles.mc; 279.611088; 1) | not then
               error("MC promasen: \(.angles.mc)")
-            elif blizu(.positions.chiron.longitude; 273.617330; 1) | not then
+            elif blizu(.positions.chiron.longitude; 251.617626; 1) | not then
               error("Hiron promasen: \(.positions.chiron.longitude)")
-            elif blizu(.positions.sun.longitude; 141.565233; 1) | not then
+            elif blizu(.positions.sun.longitude; 280.368919; 1) | not then
               error("Sunce promaseno: \(.positions.sun.longitude)")
             else
               "uzivo i tacno: \(.positions | keys | length) tela, ASC \(.angles.asc), Hiron \(.positions.chiron.degree)"
@@ -76,7 +76,7 @@ jobs:
             -H 'Access-Control-Request-Method: POST')
           zaglavlje=$(curl -sS -D - -o /dev/null -X POST "$B/v1/chart" \
             -H 'Origin: https://lunasomnia.com' -H 'content-type: application/json' \
-            -d '{"utc":"2002-08-14T12:50:00Z","lat":44.8667,"lon":20.65}' \
+            -d '{"utc":"2000-01-01T12:00:00Z","lat":51.4779,"lon":0.0}' \
             | grep -ci 'access-control-allow-origin: https://lunasomnia.com' || true)
           echo "  nas OPTIONS:    $nase   (ocekivano 204)"
           echo "  tudji OPTIONS:  $tudje   (ocekivano 403)"

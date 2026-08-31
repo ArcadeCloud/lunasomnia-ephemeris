@@ -28,15 +28,18 @@ from app.server import Handler
 HOST, PORT = "127.0.0.1", 8477
 BASE = f"http://{HOST}:{PORT}"
 
-# Etalon: Jovanova karta, potvrdjena naspram Astrodienst-a do 0,5 lucne sekunde.
+# Etalon: J2000 - 1.1.2000. u 12:00 UT na Grinicu, JD tacno 2451545,0. Kanonski
+# astronomski trenutak, pa je sam sebi dokumentacija. Namerno NIJE nicija natalna
+# karta: datum, vreme i mesto rodjenja su licni podatak i nemaju sta u javnom
+# repozitorijumu. Vrednosti su izracunate Swiss Ephemeris-om.
 ETALON = {
-    "local": "2002-08-14T14:50", "tz": "Europe/Belgrade",
-    "lat": 44.8667, "lon": 20.65,
+    "local": "2000-01-01T12:00", "tz": "Europe/London",
+    "lat": 51.4779, "lon": 0.0,
 }
 OCEKIVANO = {
-    "ut": "2002-08-14T12:50:00Z",
-    "asc": 245.184624, "mc": 175.554199,
-    "sun": 141.565233, "moon": 219.970554, "chiron": 273.617330,
+    "ut": "2000-01-01T12:00:00Z",
+    "asc": 24.266189, "mc": 279.611088,
+    "sun": 280.368919, "moon": 223.323751, "chiron": 251.617626,
 }
 
 _pali = 0
@@ -109,18 +112,18 @@ def main() -> int:
         proveri(blizu(d["cusps"][0], OCEKIVANO["asc"]), "prvi kuspid je Ascendent")
 
         # --- oba nacina zadavanja trenutka daju isti rezultat
-        _, d2, _ = post("/v1/chart", {"utc": "2002-08-14T12:50:00Z", "lat": 44.8667, "lon": 20.65})
+        _, d2, _ = post("/v1/chart", {"utc": "2000-01-01T12:00:00Z", "lat": 51.4779, "lon": 0.0})
         proveri(blizu(d2["angles"]["asc"], d["angles"]["asc"], 0.01),
                 "'utc' i 'local'+'tz' daju istu kartu")
 
         # --- sistemi kuca
         _, dw, _ = post("/v1/chart", {**ETALON, "house_system": "whole_sign"})
         proveri(dw["house_system"] == "whole_sign", "whole_sign se prihvata")
-        proveri(dw["positions"]["moon"]["house"] == 12, "Mesec je u 12. kuci (whole sign)")
+        proveri(dw["positions"]["moon"]["house"] == 8, "Mesec je u 8. kuci (whole sign)")
 
         # --- odbijanje neispravnog ulaza
         for opis, telo, kod_ocek in [
-            ("nedostaje mesto",        {"utc": "2002-08-14T12:50:00Z"}, 400),
+            ("nedostaje mesto",        {"utc": "2000-01-01T12:00:00Z"}, 400),
             ("sirina van opsega",      {**ETALON, "lat": 91}, 400),
             ("nepoznata zona",         {**ETALON, "tz": "Europe/Atlantis"}, 400),
             ("nepoznat sistem kuca",   {**ETALON, "house_system": "izmisljen"}, 400),

@@ -50,8 +50,8 @@ servis, pa podaci o rodjenju idu samo server-serveru i ne prolaze kroz tudji pre
 `POST /v1/chart`
 
 ```json
-{ "local": "2002-08-14T14:50", "tz": "Europe/Belgrade",
-  "lat": 44.8667, "lon": 20.65, "house_system": "placidus" }
+{ "local": "2000-01-01T12:00", "tz": "Europe/London",
+  "lat": 51.4779, "lon": 0.0, "house_system": "placidus" }
 ```
 
 Trenutak se zadaje ili kao `utc` (ISO 8601), ili kao `local` + `tz` (IANA ime zone;
@@ -74,8 +74,13 @@ izgledala savrseno ispravno, samo bez jednog tela. Direktan test to ne bi nikada
 
 ## Tacnost
 
-Etalon je natalna karta potvrdjena naspram Astrodienst-a do 0,5 lucne sekunde. Testovi
-traze poklapanje do 1 lucne sekunde za Ascendent, Medium Coeli, Sunce, Mesec i Hirona.
+Etalon je **J2000**: 1. januar 2000. u 12:00 UT na Grinicu (JD tacno 2451545,0). Kanonski
+astronomski trenutak, pa je i sam sebi dokumentacija. Vrednosti su izracunate Swiss
+Ephemeris-om, a testovi traze poklapanje do 1 lucne sekunde za Ascendent, Medium Coeli,
+Sunce, Mesec i Hirona.
+
+Etalon namerno NIJE ni cija natalna karta: datum, vreme i mesto rodjenja su licni podatak
+i nemaju sta da trazе u javnom repozitorijumu.
 
 ## Efemeridni fajlovi
 

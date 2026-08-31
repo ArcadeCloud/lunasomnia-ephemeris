@@ -71,7 +71,7 @@ def parse_request(body: dict) -> dict:
         try:
             when = dt.datetime.fromisoformat(raw)
         except ValueError:
-            raise BadRequest("utc: expected ISO 8601, e.g. 2002-08-14T12:50:00Z")
+            raise BadRequest("utc: expected ISO 8601, e.g. 2000-01-01T12:00:00Z")
         if when.tzinfo is None:
             when = when.replace(tzinfo=dt.timezone.utc)
         when = when.astimezone(dt.timezone.utc)

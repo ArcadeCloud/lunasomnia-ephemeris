@@ -363,7 +363,7 @@ def parse_pos(s):
     return norm(si*30 + d + mi/60 + sec/3600)
 
 def from_positions(pos, asc=None, mc=None, cusps=None, day=None, retro=(),
-                   name='', place='', birth=None, lat=44.87, lon=20.65, tz='Europe/Belgrade'):
+                   name='', place='', birth=None, lat=51.4779, lon=0.0, tz='Europe/London'):
     """Karta iz procitanih pozicija (npr. sa slike), bez efemeride.
     pos: {'Sunce':'21LE33', ...}; asc/mc isto. birth: (y,m,d,h,mi) ako je poznato -> omogucava tajming."""
     c = object.__new__(Chart)

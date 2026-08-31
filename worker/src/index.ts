@@ -71,7 +71,7 @@ function parse(body: Body) {
   if (body.utc) {
     when = new Date(String(body.utc).replace(/Z$/, "") + "Z");
     if (Number.isNaN(when.getTime())) {
-      throw new BadRequest("utc: expected ISO 8601, e.g. 2002-08-14T12:50:00Z");
+      throw new BadRequest("utc: expected ISO 8601, e.g. 2000-01-01T12:00:00Z");
     }
   } else {
     if (!body.tz) throw new BadRequest("provide either 'utc', or 'local' plus 'tz'");
