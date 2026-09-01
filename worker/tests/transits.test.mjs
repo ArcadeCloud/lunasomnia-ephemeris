@@ -32,13 +32,24 @@ test("ulazak Sunca u Ovna je prolecna ravnodnevica", () => {
   assert.ok(d <= 2, `razlika ${d.toFixed(1)} min: ${ulaz.utc} prema ${ravnodnevica}`);
 });
 
-test("Mesec obidje sve znake za mesec dana", () => {
+test("Mesec menja znak svaka dva i po dana", () => {
   const od = jdFromDate(new Date("2026-09-01T00:00:00Z"));
-  const ulasci = ingresses(od, od + 29).filter((i) => i.planet === "moon");
-  // Mesec menja znak svaka ~2,3 dana, dakle 12 ili 13 puta u 29 dana.
-  assert.ok(ulasci.length >= 12 && ulasci.length <= 13, `dobijeno ${ulasci.length}`);
-  const znakovi = new Set(ulasci.map((i) => i.sign));
-  assert.ok(znakovi.size >= 12, `razlicitih znakova ${znakovi.size}`);
+  // Kratko razdoblje: Mesec se racuna. Za 10 dana ocekuju se 4 ili 5 ulazaka.
+  const ulasci = ingresses(od, od + 10).filter((i) => i.planet === "moon");
+  assert.ok(ulasci.length >= 4 && ulasci.length <= 5, `dobijeno ${ulasci.length}`);
+  assert.equal(new Set(ulasci.map((i) => i.sign)).size, ulasci.length, "isti znak dvaput");
+});
+
+test("duga razdoblja NAMERNO izostavljaju Mesec", () => {
+  const od = jdFromDate(new Date("2026-09-01T00:00:00Z"));
+  // Mesec bi za 90 dana dao 39 od 49 ulazaka, svaki uz prepolovljavanje - to je bio
+  // glavni trosak zbog kog je servis vracao 503. Gde je Mesec bio pre dva meseca
+  // ionako nije podatak nego sum.
+  const dugo = ingresses(od, od + 90);
+  assert.equal(dugo.filter((i) => i.planet === "moon").length, 0, "Mesec je usao u dugo razdoblje");
+  assert.ok(dugo.length >= 6, `sporih ulazaka ${dugo.length}`);
+  // Granica je 10 dana: ispod nje Mesec mora biti tu.
+  assert.ok(ingresses(od, od + 9).some((i) => i.planet === "moon"), "Mesec izostao iz kratkog razdoblja");
 });
 
 test("Merkur ima tri retrogradna razdoblja godisnje", () => {

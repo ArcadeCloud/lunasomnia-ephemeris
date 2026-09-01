@@ -168,7 +168,17 @@ const KORAK: Record<string, number> = {
  */
 export function ingresses(odJd: number, doJd: number): Ingress[] {
   const out: Ingress[] = [];
+  /*
+   * Mesec se izostavlja iz duzih razdoblja. On menja znak svaka 2,3 dana, pa za 90 dana
+   * napravi 39 od ukupno 49 ulazaka - i svaki trazi prepolovljavanje. To je bio glavni
+   * trosak zbog kog je servis vracao 503 na mesecni i godisnji horoskop.
+   *
+   * Nije samo usteda: gde je Mesec bio pre dva meseca nije podatak nego sum. Za nedelju
+   * jeste, i tu se i dalje racuna.
+   */
+  const dugo = doJd - odJd > 10;
   for (const [ime, id] of Object.entries(PLANETS)) {
+    if (dugo && ime === "moon") continue;
     const korak = KORAK[ime] ?? 5;
     let prosla = Math.floor(pozicija(id, odJd).lon / 30);
     // Kraj opsega se meri izricito. Raniji pokusaj da se poslednji korak skrati na tacan
@@ -184,9 +194,11 @@ export function ingresses(odJd: number, doJd: number): Ingress[] {
         t += korak;
         continue;
       }
-      // Nadji granicu prepolovljavanjem. 24 koraka spusta gresku ispod sekunde.
+      // Dvanaest prepolovljavanja: polazeci od koraka od jednog dana to spusta gresku
+      // ispod minuta, sto je za horoskop vise nego dovoljno. Dvadeset cetiri je bilo
+      // dvostruko skuplje bez ikakve razlike na stranici.
       let lo = t - korak, hi = t;
-      for (let k = 0; k < 24; k++) {
+      for (let k = 0; k < 12; k++) {
         const mid = (lo + hi) / 2;
         if (Math.floor(pozicija(id, mid).lon / 30) === prosla) lo = mid; else hi = mid;
       }
@@ -213,7 +225,7 @@ export function stations(odJd: number, doJd: number): Station[] {
       const v = pozicija(id, t).speed;
       if ((prosla < 0) === (v < 0)) { prosla = v; continue; }
       let lo = t - korak, hi = t;
-      for (let k = 0; k < 24; k++) {
+      for (let k = 0; k < 14; k++) {
         const mid = (lo + hi) / 2;
         if ((pozicija(id, mid).speed < 0) === (prosla < 0)) lo = mid; else hi = mid;
       }
