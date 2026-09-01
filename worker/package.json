@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node --test tests/pure.test.mjs tests/chart.test.mjs"
+    "test": "node --test tests/pure.test.mjs tests/chart.test.mjs tests/moonsun.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.42.0"

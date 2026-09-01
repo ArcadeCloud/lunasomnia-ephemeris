@@ -9,7 +9,8 @@
  * preko HTTP-a. Pakovanje Swiss Ephemeris-a u Worker SAJTA napravilo bi od njih jedan
  * program i AGPL bi obuhvatio i sajt - zato se to ne sme raditi.
  */
-import { computeChart, HOUSE_SYSTEMS } from "./ephemeris.ts";
+import { boot, computeChart, HOUSE_SYSTEMS } from "./ephemeris.ts";
+import { eclipses, phases, sunEvents } from "./moonsun.ts";
 import { julianDay, zonedToUtc } from "./time.ts";
 
 const SOURCE_URL = "https://github.com/ArcadeCloud/lunasomnia-ephemeris";
@@ -95,6 +96,7 @@ function parse(body: Body) {
 
 export default {
   async fetch(request: Request): Promise<Response> {
+    boot();
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
     const cors = corsHeaders(request);
@@ -116,13 +118,50 @@ export default {
 
     if (request.method === "GET" || request.method === "HEAD") {
       if (path === "/health") return json({ ok: true }, 200, cors);
+
+      // Mesec, pomracenja i Sunce su GET jer za sve posetioce daju ISTI odgovor:
+      // nebo ne zavisi od toga ko pita. Zato se i mogu kesirati na ivici.
+      if (path === "/v1/moon" || path === "/v1/eclipses" || path === "/v1/sun") {
+        try {
+          const kes = { "cache-control": "public, max-age=3600" };
+          if (path === "/v1/sun") {
+            const g = Number(url.searchParams.get("year") ?? new Date().getUTCFullYear());
+            if (!Number.isInteger(g) || g < 1800 || g > 2399) {
+              return json({ error: "year: expected an integer between 1800 and 2399" }, 400, cors);
+            }
+            return json({ year: g, events: sunEvents(g) }, 200, { ...cors, ...kes });
+          }
+
+          const od = url.searchParams.get("from");
+          const kada = od ? new Date(od) : new Date();
+          if (Number.isNaN(kada.getTime())) {
+            return json({ error: "from: expected ISO 8601, e.g. 2026-09-01" }, 400, cors);
+          }
+          const koliko = Number(url.searchParams.get("count") ?? 12);
+          if (!Number.isInteger(koliko) || koliko < 1 || koliko > 60) {
+            return json({ error: "count: expected an integer between 1 and 60" }, 400, cors);
+          }
+          return path === "/v1/moon"
+            ? json({ from: kada.toISOString(), phases: phases(kada, koliko) }, 200, { ...cors, ...kes })
+            : json({ from: kada.toISOString(), eclipses: eclipses(kada, koliko) }, 200, { ...cors, ...kes });
+        } catch (e) {
+          console.error("neocekivana greska:", (e as Error)?.name, (e as Error)?.message);
+          return json({ error: "internal error" }, 500, cors);
+        }
+      }
       if (path === "/" || path === "/source") {
         return json({
           service: "lunasomnia-ephemeris",
           description: "Swiss Ephemeris behind a small JSON API.",
           license: "AGPL-3.0",
           source: SOURCE_URL,
-          endpoints: { "POST /v1/chart": "natal chart", "GET /health": "liveness" },
+          endpoints: {
+            "POST /v1/chart": "natal chart",
+            "GET /v1/moon": "moon phases (from, count)",
+            "GET /v1/eclipses": "solar and lunar eclipses (from, count)",
+            "GET /v1/sun": "equinoxes and solstices (year)",
+            "GET /health": "liveness",
+          },
         }, 200, cors);
       }
       return json({ error: "not found" }, 404, cors);

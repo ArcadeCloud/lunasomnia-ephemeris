@@ -9,37 +9,44 @@
  * konstruktoru `SwissEph`, a efemeridni fajlovi se ubacuju u memoriju preko `mount()`.
  */
 import { SwissEph } from "../vendor/swisseph/bridge.js";
+import { engine, setEngine } from "./engine.ts";
 import wasmModule from "../vendor/libswephe.wasm";
 import seas from "../vendor/seas_18.se1";
 import sepl from "../vendor/sepl_18.se1";
+import semo from "../vendor/semo_18.se1";
 
 /*
- * semo_18.se1 (Mesec, 1,24 MB) NAMERNO nije ukljucen. Bez njega Mesec ide na Moshier
- * i promasi 0,14 lucne sekunde - to je 0,001 sekunda vremena rodjenja, dakle daleko
- * ispod svake merljive nesigurnosti o tome kad je neko rodjen. Ustedjenih 1,24 MB je
- * trecina dozvoljene velicine Worker-a.
+ * Sva tri fajla su ukljucena, ukupno 1,92 MB uz 1,22 MB WASM-a.
  *
- * seas_18.se1 (210 KB) je NEOPHODAN: bez njega Hirona nema uopste, jer Moshier ne
- * racuna asteroide. sepl_18.se1 (460 KB) daje planete na nulu umesto na 0,42".
+ * semo_18.se1 (Mesec) je isprva bio izostavljen radi velicine, ali se pokazalo da bez
+ * njega i SUNCE pada na Moshier: njegov prividni geocentricni polozaj trazi popravku za
+ * baricentar sistema Zemlja-Mesec. Posledica je bila pomeranje ravnodnevica i
+ * solsticija za desetak sekundi - sitnica za natalnu kartu, ali sajt koji objavljuje
+ * tacan trenutak ravnodnevice ne sme da racuna priblizno.
+ *
+ * seas_18.se1 je NEOPHODAN za Hirona: Moshier ne racuna asteroide uopste.
  */
 
-let eph: SwissEph | null = null;
+let sagradjen = false;
 
-/** Jedna instanca po izolatu; ubacivanje fajlova se radi samo prvi put. */
-export function engine(): SwissEph {
-  if (eph) return eph;
+/** Gradi motor iz uvezenog WASM-a i efemerida. Radi samo u Workers-u. */
+export function boot(): void {
+  if (sagradjen) return;
   const e = new SwissEph(wasmModule as WebAssembly.Module);
   e.mount("seas_18.se1", new Uint8Array(seas as ArrayBuffer));
   e.mount("sepl_18.se1", new Uint8Array(sepl as ArrayBuffer));
+  e.mount("semo_18.se1", new Uint8Array(semo as ArrayBuffer));
   e.set_ephe_path(".");
-  eph = e;
-  return e;
+  setEngine(e);
+  sagradjen = true;
 }
+
+export { engine };
 
 export const SIGNS_EN = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
   "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"] as const;
 
-export const norm = (x: number): number => ((x % 360) + 360) % 360;
+export { norm };
 export const signIndex = (lon: number): number => Math.floor(norm(lon) / 30);
 
 export function dms(lon: number): string {
