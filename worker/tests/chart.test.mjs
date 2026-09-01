@@ -56,3 +56,46 @@ test("whole-sign daje Mesec u 8. kuci", () => {
   const kuca = ((Math.floor(mesec / 30) - Math.floor(asc / 30)) % 12 + 12) % 12 + 1;
   assert.equal(kuca, 8);
 });
+
+/*
+ * Provera SKLOPLJENE karte, a ne samo sirovih poziva swisseph-a.
+ *
+ * Povod: `norm` je pri preuredjivanju ostao koriscen a neuvezen. Isporuka je prosla,
+ * a /v1/chart je pukao uzivo - jer su testovi gadjali swe_calc_ut umesto computeChart.
+ * Sirovi pozivi ne dokazuju da je ono sto servis STVARNO vraca ispravno.
+ */
+import { computeChart, HOUSE_SYSTEMS } from "../src/chart.ts";
+import { setEngine } from "../src/engine.ts";
+
+setEngine(eph);
+
+test("computeChart vraca potpunu kartu", () => {
+  const k = computeChart(JD, 51.4779, 0.0, "placidus");
+
+  assert.equal(Object.keys(k.positions).length, 14, "ocekivano 14 tela");
+  assert.ok(!k.unavailable, `neka tela nisu izracunata: ${JSON.stringify(k.unavailable)}`);
+  assert.ok(k.positions.chiron, "Hiron nedostaje");
+
+  assert.ok(sek(k.angles.asc, 24.266189) <= 0.5, `ASC ${k.angles.asc}`);
+  assert.ok(sek(k.angles.mc, 279.611088) <= 0.5, `MC ${k.angles.mc}`);
+  assert.equal(k.cusps.length, 12);
+
+  // Svako telo mora imati sve popunjeno - prazan `sign` ili `degree` znaci da je
+  // negde u sklapanju pukla funkcija koja se ne vidi u sirovom pozivu.
+  for (const [ime, p] of Object.entries(k.positions)) {
+    assert.ok(typeof p.sign === "string" && p.sign.length > 2, `${ime}: sign = ${p.sign}`);
+    assert.match(p.degree, /^\d{1,2}°\d{2}'\d{2}"$/, `${ime}: degree = ${p.degree}`);
+    assert.ok(p.house >= 1 && p.house <= 12, `${ime}: kuca = ${p.house}`);
+  }
+
+  assert.ok(["sun", "moon"].includes(k.sect.light));
+});
+
+test("svi sistemi kuca daju upotrebljivu kartu", () => {
+  for (const sistem of Object.keys(HOUSE_SYSTEMS)) {
+    const k = computeChart(JD, 51.4779, 0.0, sistem);
+    assert.equal(k.cusps.length, 12, `${sistem}: kuspida ${k.cusps.length}`);
+    assert.ok(k.cusps.every((c) => c >= 0 && c < 360), `${sistem}: kuspid van opsega`);
+    assert.ok(Object.keys(k.positions).length === 14, `${sistem}: tela`);
+  }
+});

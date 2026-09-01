@@ -9,7 +9,8 @@
  * preko HTTP-a. Pakovanje Swiss Ephemeris-a u Worker SAJTA napravilo bi od njih jedan
  * program i AGPL bi obuhvatio i sajt - zato se to ne sme raditi.
  */
-import { boot, computeChart, HOUSE_SYSTEMS } from "./ephemeris.ts";
+import { boot } from "./ephemeris.ts";
+import { computeChart, HOUSE_SYSTEMS } from "./chart.ts";
 import { eclipses, phases, sunEvents } from "./moonsun.ts";
 import { julianDay, zonedToUtc } from "./time.ts";
 
