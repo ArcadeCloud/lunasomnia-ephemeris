@@ -125,14 +125,14 @@ export function aspects(jd: number, exactWithinDays = 1): Aspect[] {
 function tacanTrenutak(a: string, b: string, ugao: number, jd: number, dana: number): number | null {
   const f = (t: number) =>
     Math.abs(razlika(pozicija(PLANETS[a], t).lon, pozicija(PLANETS[b], t).lon)) - ugao;
-  const korak = 1 / 24;
+  const korak = 1 / 8;
   let prosli = f(jd - dana);
   for (let t = jd - dana + korak; t <= jd + dana; t += korak) {
     const sad = f(t);
     if (prosli === 0) return t - korak;
     if ((prosli < 0) !== (sad < 0)) {
       let lo = t - korak, hi = t;
-      for (let k = 0; k < 30; k++) {
+      for (let k = 0; k < 20; k++) {
         const mid = (lo + hi) / 2;
         if ((f(lo) < 0) === (f(mid) < 0)) lo = mid; else hi = mid;
       }
@@ -146,6 +146,21 @@ function tacanTrenutak(a: string, b: string, ugao: number, jd: number, dana: num
 export interface Ingress { planet: string; sign: string; utc: string }
 
 /**
+ * Korak trazenja po planeti, u danima.
+ *
+ * Bira se tako da planeta izmedju dva merenja NE MOZE preci ceo znak (30 stepeni) - inace
+ * bi se ulazak preskocio. Mesec ide 13,2 stepena dnevno pa mu treba dan; Saturn ide 0,03
+ * pa mu je i deset dana previse gusto.
+ *
+ * Ovo nije sitna optimizacija: jedinstven korak od dva sata za sve planete znacio je
+ * 10.800 racunanja polozaja za 90 dana i obarao Worker sa 503.
+ */
+const KORAK: Record<string, number> = {
+  moon: 1, sun: 5, mercury: 4, venus: 5, mars: 8,
+  jupiter: 20, saturn: 20, uranus: 20, neptune: 20, pluto: 20,
+};
+
+/**
  * Ulasci planeta u novi znak unutar razdoblja.
  *
  * Mesec ih pravi svaka dva i po dana, spore planete jednom u nekoliko godina - i upravo
@@ -153,20 +168,32 @@ export interface Ingress { planet: string; sign: string; utc: string }
  */
 export function ingresses(odJd: number, doJd: number): Ingress[] {
   const out: Ingress[] = [];
-  const korak = 1 / 12;   // dva sata: Mesec za to vreme predje oko 1 stepen
   for (const [ime, id] of Object.entries(PLANETS)) {
+    const korak = KORAK[ime] ?? 5;
     let prosla = Math.floor(pozicija(id, odJd).lon / 30);
-    for (let t = odJd + korak; t <= doJd; t += korak) {
+    // Kraj opsega se meri izricito. Raniji pokusaj da se poslednji korak skrati na tacan
+    // kraj ("if (t > doJd) t = doJd" unutar for-a) napravio je BESKONACNU petlju: t se
+    // vracao na doJd i odmah opet povecavao.
+    let t = odJd + korak;
+    for (;;) {
+      const kraj = t >= doJd;
+      if (kraj) t = doJd;
       const znak = Math.floor(pozicija(id, t).lon / 30);
-      if (znak === prosla) continue;
-      // Nadji granicu prepolovljavanjem.
+      if (znak === prosla) {
+        if (kraj) break;
+        t += korak;
+        continue;
+      }
+      // Nadji granicu prepolovljavanjem. 24 koraka spusta gresku ispod sekunde.
       let lo = t - korak, hi = t;
-      for (let k = 0; k < 30; k++) {
+      for (let k = 0; k < 24; k++) {
         const mid = (lo + hi) / 2;
         if (Math.floor(pozicija(id, mid).lon / 30) === prosla) lo = mid; else hi = mid;
       }
       out.push({ planet: ime, sign: SIGNS[znak], utc: jdToIso(hi) });
       prosla = znak;
+      if (kraj) break;
+      t += korak;
     }
   }
   return out.sort((a, b) => a.utc.localeCompare(b.utc));
@@ -177,7 +204,8 @@ export interface Station { planet: string; direction: "retrograde" | "direct"; u
 /** Stajanja: trenuci kad planeta menja smer. Mesec i Sunce ih nemaju. */
 export function stations(odJd: number, doJd: number): Station[] {
   const out: Station[] = [];
-  const korak = 0.5;
+  // Dva dana: brzina planete se menja sporo, pa se stajanje ne moze preskociti.
+  const korak = 2;
   for (const [ime, id] of Object.entries(PLANETS)) {
     if (ime === "sun" || ime === "moon") continue;
     let prosla = pozicija(id, odJd).speed;
@@ -185,7 +213,7 @@ export function stations(odJd: number, doJd: number): Station[] {
       const v = pozicija(id, t).speed;
       if ((prosla < 0) === (v < 0)) { prosla = v; continue; }
       let lo = t - korak, hi = t;
-      for (let k = 0; k < 30; k++) {
+      for (let k = 0; k < 24; k++) {
         const mid = (lo + hi) / 2;
         if ((pozicija(id, mid).speed < 0) === (prosla < 0)) lo = mid; else hi = mid;
       }
