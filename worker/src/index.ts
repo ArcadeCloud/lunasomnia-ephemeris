@@ -13,6 +13,7 @@ import { boot } from "./ephemeris.ts";
 import { computeChart, HOUSE_SYSTEMS } from "./chart.ts";
 import { eclipses, phases, sunEvents } from "./moonsun.ts";
 import { chineseNewYear, chineseYearFor, cstDate, liChun } from "./chinese.ts";
+import { aspects, ingresses, jdFromDate, positions, stations } from "./transits.ts";
 import { julianDay, zonedToUtc } from "./time.ts";
 
 const SOURCE_URL = "https://github.com/ArcadeCloud/lunasomnia-ephemeris";
@@ -123,6 +124,41 @@ export default {
 
       // Mesec, pomracenja i Sunce su GET jer za sve posetioce daju ISTI odgovor:
       // nebo ne zavisi od toga ko pita. Zato se i mogu kesirati na ivici.
+      if (path === "/v1/transits") {
+        try {
+          const d = url.searchParams.get("date");
+          const kada = d ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? d + "T12:00:00Z" : d) : new Date();
+          if (Number.isNaN(kada.getTime())) {
+            return json({ error: "date: expected YYYY-MM-DD" }, 400, cors);
+          }
+          const g = kada.getUTCFullYear();
+          if (g < 1800 || g > 2399) return json({ error: "date out of range: 1800-2399" }, 400, cors);
+
+          /*
+           * Opseg je ogranicen jer trazenje ulazaka ide korakom od dva sata: godina bi
+           * znacila oko 44.000 racunanja polozaja i probila bi vreme dozvoljeno Worker-u.
+           * Sajt ionako trazi po razdobljima - dan, nedelja, mesec - pa se to i uzima.
+           */
+          const dana = Number(url.searchParams.get("days") ?? 1);
+          if (!Number.isInteger(dana) || dana < 1 || dana > 90) {
+            return json({ error: "days: expected an integer between 1 and 90" }, 400, cors);
+          }
+
+          const jd = jdFromDate(kada);
+          return json({
+            date: kada.toISOString().slice(0, 10),
+            days: dana,
+            positions: positions(jd),
+            aspects: aspects(jd),
+            ingresses: ingresses(jd, jd + dana),
+            stations: stations(jd, jd + dana),
+          }, 200, { ...cors, "cache-control": "public, max-age=3600" });
+        } catch (e) {
+          console.error("neocekivana greska:", (e as Error)?.name, (e as Error)?.message);
+          return json({ error: "internal error" }, 500, cors);
+        }
+      }
+
       if (path === "/v1/chinese") {
         try {
           const kes = { "cache-control": "public, max-age=86400" };
@@ -199,6 +235,7 @@ export default {
             "GET /v1/eclipses": "solar and lunar eclipses (from, count)",
             "GET /v1/sun": "equinoxes and solstices (year)",
             "GET /v1/chinese": "Chinese zodiac year (date, boundary)",
+            "GET /v1/transits": "positions, aspects, ingresses and stations (date, days)",
             "GET /health": "liveness",
           },
         }, 200, cors);
