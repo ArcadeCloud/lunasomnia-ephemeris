@@ -12,6 +12,7 @@
 import { boot } from "./ephemeris.ts";
 import { computeChart, HOUSE_SYSTEMS } from "./chart.ts";
 import { eclipses, phases, sunEvents } from "./moonsun.ts";
+import { chineseNewYear, chineseYearFor, cstDate, liChun } from "./chinese.ts";
 import { julianDay, zonedToUtc } from "./time.ts";
 
 const SOURCE_URL = "https://github.com/ArcadeCloud/lunasomnia-ephemeris";
@@ -122,6 +123,42 @@ export default {
 
       // Mesec, pomracenja i Sunce su GET jer za sve posetioce daju ISTI odgovor:
       // nebo ne zavisi od toga ko pita. Zato se i mogu kesirati na ivici.
+      if (path === "/v1/chinese") {
+        try {
+          const kes = { "cache-control": "public, max-age=86400" };
+          const granica = url.searchParams.get("boundary") ?? "chinese_new_year";
+          if (granica !== "chinese_new_year" && granica !== "li_chun") {
+            return json({ error: "boundary: expected chinese_new_year or li_chun" }, 400, cors);
+          }
+          const d = url.searchParams.get("date");
+          if (d) {
+            const kada = new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? d + "T12:00:00Z" : d);
+            if (Number.isNaN(kada.getTime())) {
+              return json({ error: "date: expected YYYY-MM-DD" }, 400, cors);
+            }
+            const g = kada.getUTCFullYear();
+            if (g < 1800 || g > 2399) {
+              return json({ error: "date out of range: 1800-2399" }, 400, cors);
+            }
+            return json(chineseYearFor(kada, granica), 200, { ...cors, ...kes });
+          }
+          // Bez datuma: granice za zadatu godinu, za kalendar na stranici.
+          const g = Number(url.searchParams.get("year") ?? new Date().getUTCFullYear());
+          if (!Number.isInteger(g) || g < 1800 || g > 2399) {
+            return json({ error: "year: expected an integer between 1800 and 2399" }, 400, cors);
+          }
+          return json({
+            year: g,
+            chinese_new_year: cstDate(chineseNewYear(g)),
+            li_chun: cstDate(liChun(g)),
+            zodiac: chineseYearFor(new Date(Date.UTC(g, 5, 1)), granica),
+          }, 200, { ...cors, ...kes });
+        } catch (e) {
+          console.error("neocekivana greska:", (e as Error)?.name, (e as Error)?.message);
+          return json({ error: "internal error" }, 500, cors);
+        }
+      }
+
       if (path === "/v1/moon" || path === "/v1/eclipses" || path === "/v1/sun") {
         try {
           const kes = { "cache-control": "public, max-age=3600" };
@@ -161,6 +198,7 @@ export default {
             "GET /v1/moon": "moon phases (from, count)",
             "GET /v1/eclipses": "solar and lunar eclipses (from, count)",
             "GET /v1/sun": "equinoxes and solstices (year)",
+            "GET /v1/chinese": "Chinese zodiac year (date, boundary)",
             "GET /health": "liveness",
           },
         }, 200, cors);

@@ -97,6 +97,18 @@ jobs:
             else "pomracenja: \(.eclipses | map(.kind + " " + .type) | join(", "))" end'
 
           echo ""
+          echo "=== Kineski kalendar ==="
+          # Provera koja stvarno nesto znaci: 2024. je Nova godina 10. februara, pa je
+          # rodjen 1. februara ZEC a ne Zmaj. Tu grese sve prepisane tabele.
+          probaj "$B/v1/chinese?date=2024-02-01" | jq -e '
+            if .animal != "Rabbit" then error("1.2.2024 mora biti Rabbit, dobijeno \(.animal)")
+            elif .year != 2023 then error("mora pripadati 2023, dobijeno \(.year)")
+            else "1.2.2024 -> \(.animal) \(.element), granica \(.boundary_date)" end'
+          probaj "$B/v1/chinese?year=2026" | jq -e '
+            if .chinese_new_year != "2026-02-17" then error("CNY 2026 promasen: \(.chinese_new_year)")
+            else "2026: CNY \(.chinese_new_year), Li Chun \(.li_chun), \(.zodiac.element) \(.zodiac.animal)" end'
+
+          echo ""
           echo "=== CORS ==="
           # Zatvoren spisak porekla ne vredi nista ako se ne proveri da tudje ODBIJA.
           nase=$(curl -sS -o /dev/null -w '%{http_code}' -X OPTIONS "$B/v1/chart" \
