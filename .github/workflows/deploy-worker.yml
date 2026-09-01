@@ -39,8 +39,11 @@ jobs:
         run: |
           set -euo pipefail
           B=https://lunasomnia-ephemeris.simkora.workers.dev
-          for i in $(seq 1 20); do
-            curl -fsS "$B/health" >/dev/null 2>&1 && break
+          # Ceka se NOVA adresa, ne /health: /health vraca 200 i iz stare verzije, pa
+          # bi provera krenula pre nego sto se isporuka prosiri po ivici. Ovo je vec
+          # jednom dalo lazan neuspeh.
+          for i in $(seq 1 40); do
+            curl -fsS "$B/v1/sun?year=2026" >/dev/null 2>&1 && break
             sleep 3
           done
           odg=$(curl -fsS -X POST "$B/v1/chart" -H 'content-type: application/json' \
