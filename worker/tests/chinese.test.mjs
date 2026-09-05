@@ -35,6 +35,50 @@ test("kineska Nova godina se poklapa sa poznatim datumima", () => {
   assert.equal(lose.length, 0, "\n  " + lose.join("\n  "));
 });
 
+test("1985: solsticij i mlad mesec istog kineskog dana", () => {
+  // Ovo je promasivano za CEO MESEC i nijedan test to nije video, jer su svi poceli od
+  // 2020. Uzrok: kineski kalendar se racuna po DANIMA u Kini, a kod je poredio trenutke.
+  //
+  // Solsticij 1984. je 21.12. u 16:23 UTC = 22.12. u 00:23 po kineskom vremenu.
+  // Mlad mesec je 22.12. u 11:47 UTC = 22.12. u 19:47 po kineskom. Isti dan, pa taj mlad
+  // mesec pocinje mesec 11. Po trenucima ispada kasniji od solsticija, pa se sidro
+  // pomerilo lunaciju unazad i Nova godina je ispala 21.01. umesto 20.02.
+  assert.equal(cstDate(chineseNewYear(1985)), "1985-02-20");
+});
+
+test("kineska Nova godina, sirok raspon 1960-2034", () => {
+  // Raspon je vazniji od broja: greska iz 1985. trazi da solsticij i mlad mesec padnu na
+  // isti kineski dan, sto je retko - jedna godina na 201. Uzak opseg je promasi.
+  const POZNATO = {
+    1960:"01-28",1961:"02-15",1962:"02-05",1963:"01-25",1964:"02-13",1965:"02-02",
+    1966:"01-21",1967:"02-09",1968:"01-30",1969:"02-17",1970:"02-06",1971:"01-27",
+    1972:"02-15",1973:"02-03",1974:"01-23",1975:"02-11",1976:"01-31",1977:"02-18",
+    1978:"02-07",1979:"01-28",1980:"02-16",1981:"02-05",1982:"01-25",1983:"02-13",
+    1984:"02-02",1985:"02-20",1986:"02-09",1987:"01-29",1988:"02-17",1989:"02-06",
+    1990:"01-27",1991:"02-15",1992:"02-04",1993:"01-23",1994:"02-10",1995:"01-31",
+    1996:"02-19",1997:"02-07",1998:"01-28",1999:"02-16",2000:"02-05",2001:"01-24",
+    2002:"02-12",2003:"02-01",2004:"01-22",2005:"02-09",2006:"01-29",2007:"02-18",
+    2008:"02-07",2009:"01-26",2010:"02-14",2011:"02-03",2012:"01-23",2013:"02-10",
+    2014:"01-31",2015:"02-19",2016:"02-08",2017:"01-28",2018:"02-16",2019:"02-05",
+    2029:"02-13",2031:"01-23",2032:"02-11",
+  };
+  const lose = [];
+  for (const [g, mmdd] of Object.entries(POZNATO)) {
+    const dobijeno = cstDate(chineseNewYear(Number(g)));
+    if (dobijeno !== `${g}-${mmdd}`) lose.push(`${g}: ${dobijeno} umesto ${g}-${mmdd}`);
+  }
+  assert.equal(lose.length, 0, `\n  ${lose.join("\n  ")}`);
+});
+
+test("Nova godina uvek pada izmedju 21.01 i 21.02", () => {
+  // Astronomska granica: van tog raspona rezultat je sigurno pogresan, bez obzira na to
+  // da li za tu godinu imamo objavljen datum za poredjenje.
+  for (let g = 1900; g <= 2100; g += 7) {
+    const d = cstDate(chineseNewYear(g)).slice(5);
+    assert.ok(d >= "01-21" && d <= "02-21", `${g}: ${d}`);
+  }
+});
+
 test("Li Chun pada 3-5. februara", () => {
   for (let g = 2020; g <= 2030; g++) {
     const d = cstDate(liChun(g));

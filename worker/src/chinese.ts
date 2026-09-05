@@ -59,13 +59,30 @@ export function nextNewMoon(od: number): number {
   throw new Error("mlad mesec nije nadjen u 40 dana");
 }
 
-/** Poslednji mlad mesec na dan `do` ili pre njega. */
-export function newMoonOnOrBefore(doJd: number): number {
-  let t = nextNewMoon(doJd - SINODICKI - 2);
-  // Ako je nadjeni vec posle cilja, vrati se jednu lunaciju unazad.
-  while (t > doJd) t = nextNewMoon(t - SINODICKI - 2);
+/**
+ * Kineski gradjanski DAN (UTC+8) kome trenutak pripada, kao ceo broj.
+ *
+ * Kineski kalendar se ne racuna po trenucima nego po danima u Kini: mesec pocinje na
+ * DAN mladog meseca, a mesec 11 je onaj koji SADRZI DAN solsticija. Razlika je stvarna
+ * i pogadja stvarne godine - solsticij 1984. je 21.12. u 16:23 UTC, ali 22.12. u 00:23
+ * po kineskom vremenu, a mlad mesec pada istog tog 22.12. Po danu se poklapaju, po
+ * trenutku mlad mesec ispada kasniji - i ceo kalendar sklizne mesec unazad.
+ */
+const cstDan = (jd: number): number => Math.floor(jd + CST + 0.5);
+
+/**
+ * Poslednji mlad mesec ciji DAN u Kini pada na dan trenutka `cilj` ili pre njega.
+ *
+ * Poredjenje ide po danu, ne po trenutku. Ranija verzija je poredila trenutke i pritom
+ * pomerala samo solsticij za CST, pa je zona bila primenjena na jednu stranu poredjenja
+ * a ne na drugu.
+ */
+export function newMoonOnOrBefore(cilj: number): number {
+  const ciljDan = cstDan(cilj);
+  let t = nextNewMoon(cilj - SINODICKI - 2);
+  while (cstDan(t) > ciljDan) t = nextNewMoon(t - SINODICKI - 2);
   let sledeci = nextNewMoon(t + 1);
-  while (sledeci <= doJd) { t = sledeci; sledeci = nextNewMoon(t + 1); }
+  while (cstDan(sledeci) <= ciljDan) { t = sledeci; sledeci = nextNewMoon(t + 1); }
   return t;
 }
 
@@ -98,8 +115,8 @@ export function liChun(godina: number): number {
  * otprilike jednom u tri godine.
  */
 export function chineseNewYear(godina: number): number {
-  const m11a = newMoonOnOrBefore(decemberSolstice(godina - 1) + CST);
-  const m11b = newMoonOnOrBefore(decemberSolstice(godina) + CST);
+  const m11a = newMoonOnOrBefore(decemberSolstice(godina - 1));
+  const m11b = newMoonOnOrBefore(decemberSolstice(godina));
   const brojMeseci = Math.round((m11b - m11a) / SINODICKI);
 
   // Sakupi pocetke meseci od m11a nadalje.
@@ -115,7 +132,8 @@ export function chineseNewYear(godina: number): number {
     let ima = false;
     for (let k = 0; k < 12; k++) {
       const t = solCross(k * 30, od - 1);
-      if (t >= od && t < doo) { ima = true; break; }
+      // I ovde po danima: zhongqi tacno na granici meseca inace ispadne u pogresan.
+      if (cstDan(t) >= cstDan(od) && cstDan(t) < cstDan(doo)) { ima = true; break; }
     }
     if (!ima) { prestupni = i; break; }
   }
